@@ -1,0 +1,46 @@
+pkgname=bootstrap-studio-n
+_pkgname=bstudio
+pkgver=7.0.3
+pkgrel=1
+pkgdesc="Bootstrap Studio is a powerful tool which web developers and designers use to create layouts and fully functional websites using the Bootstrap framework."
+arch=("x86_64")
+license=("custom")
+url="https://bootstrapstudio.io/"
+
+_source_filename="Bootstrap%20Studio.AppImage"
+source=("https://releases.bootstrapstudio.io/${pkgver}/${_source_filename}"
+        "${_pkgname}.sh")
+sha512sums=('SKIP'
+            '607236f3561d07ca10f159855cab2c6ce1b936eb5561ec5a25c5e75a3eea99e91a3c815bb3129c9e8030c9f70e9028aa1ffce5f71624de1abde185d3901769f6')
+
+prepare() {
+    # Extract AppImage
+    echo "Extracting AppImage..."
+    chmod +x "$_source_filename"
+    ./"$_source_filename" --appimage-extract &> /dev/null
+}
+
+package() {
+    # Copy package files
+    echo "Copying package files..."
+    mkdir -p "${pkgdir}/opt/${_pkgname}"
+    cp -r "${srcdir}/squashfs-root" "${pkgdir}/opt/${_pkgname}"
+    # Set perms
+    chmod a+rx "${pkgdir}/opt/${_pkgname}/" -R
+
+    # Add package to /usr/bin/
+    mkdir -p "${pkgdir}/usr/bin"
+    install -Dm 755 "${srcdir}/${_pkgname}.sh" "${pkgdir}/usr/bin/${_pkgname}"
+
+    # Copy .desktop file
+    mkdir -p "${pkgdir}/usr/share/applications"
+    cp -Lr "${srcdir}/squashfs-root/${_pkgname}.desktop" "${pkgdir}/usr/share/applications/"
+    
+    sed -i 's|^Exec=AppRun --no-sandbox %U|Exec='"$_pkgname"' --no-sandbox %U|' "${pkgdir}/usr/share/applications/${_pkgname}.desktop"
+
+    # Copy icons
+    mkdir -p "${pkgdir}/usr/share/icons/hicolor/"{128x128,256x256,512x512}"/apps/"
+    for i in 128x128 256x256 512x512; do
+        cp -Lr "${srcdir}/squashfs-root/usr/share/icons/hicolor/0x0/apps/${_pkgname}.png" "${pkgdir}/usr/share/icons/hicolor/${i}/apps/"
+    done
+}

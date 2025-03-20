@@ -1,0 +1,53 @@
+pkgname=studio-3t-n
+_pkgname=studio-3t
+pkgver=2025.4.0
+pkgrel=1
+pkgdesc="The Professional Client, IDE and GUI for MongoDB"
+arch=('x86_64')
+url="https://studio3t.com"
+license=("custom")
+
+_source_file="${_pkgname}-linux-x64"
+_source_filename="${_source_file}.tar.gz"
+source=("https://download.studio3t.com/studio-3t/linux/${pkgver}/${_source_filename}"
+        "remove-shortcuts.sh")
+sha256sums=('SKIP'
+            'f40b546f3e3b8fb4c4e200f1b5b88fa3b44c06bd43348af46053b6e6bfd951cd')
+
+prepare() {
+  # Extract
+  tar xzvf ${_source_filename}
+  chmod +x ${_source_file}.sh
+
+  # unattended mode
+  sh ./${_source_file}.sh -q -dir ${srcdir}/${_pkgname} -overwrite
+  
+  chmod +x remove-shortcuts.sh
+  ./remove-shortcuts.sh
+}
+
+package() {
+  # Copy package files
+  echo "Copying package files..."
+  mkdir -p "${pkgdir}/opt/${_pkgname}"
+  install -Dm644 "${srcdir}/${_pkgname}/.install4j/Studio-3T.png" "${pkgdir}/usr/share/pixmaps/${_pkgname}.png"
+  cp -R ${_pkgname}/. ${pkgdir}/opt/${_pkgname}
+
+  # Add package to /usr/bin/
+  mkdir -p "${pkgdir}/usr/bin"
+  ln -s "/opt/${_pkgname}/Studio-3T" "${pkgdir}/usr/bin/${_pkgname}"
+
+  # Copy .desktop file
+  mkdir -p "${pkgdir}/usr/share/applications"
+  cat << EOF > "${pkgdir}/usr/share/applications/${_pkgname}.desktop"
+[Desktop Entry]
+Type=Application
+Name=Studio 3T
+Comment=${pkgdesc}
+Exec=${_pkgname}
+Icon=${_pkgname}
+Terminal=false
+StartupNotify=false
+Categories=Development;Application;
+EOF
+}
