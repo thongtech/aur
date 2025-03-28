@@ -1,13 +1,13 @@
 pkgname=cursor-bin-n
 _pkgname=cursor
-pkgver=0.47.9
+pkgver=0.48.2
 pkgrel=1
 pkgdesc="Cursor App - AI-first coding environment"
 arch=('x86_64')
 url="https://www.cursor.com/"
 license=('custom:Proprietary')
 
-source=("${_pkgname}-${pkgver}-x86_64.AppImage::https://downloads.cursor.com/production/b6fb41b5f36bda05cab7109606e7404a65d1ff32/linux/x64/Cursor-0.47.9-x86_64.AppImage"
+source=("${_pkgname}-${pkgver}-x86_64.AppImage::https://downloads.cursor.com/production/7d6318dfcfbf7c12a87e33c06978f23167a6de3c/linux/x64/Cursor-0.48.2-x86_64.AppImage"
         "${_pkgname}.sh")
 sha512sums=('SKIP'
             'ff0837ca96b4b11d17484f4c70ab41bb7caebb7e9e7b0e14ed844284126695961eac2b1303c4d81d63c33fccef2777b0790810f9bc99aebf1a62e8701a9d99a1')
@@ -37,10 +37,6 @@ package() {
     
     sed -i 's/StartupWMClass=Cursor/StartupWMClass=cursor-url-handler/g' "${pkgdir}/usr/share/applications/${_pkgname}.desktop"
     sed -i 's/Icon=co.anysphere.cursor/Icon=cursor/g' "${pkgdir}/usr/share/applications/${_pkgname}.desktop"
-
-    find "${pkgdir}/opt/${_pkgname}/squashfs-root/" -type f -name '*.js' \
-        -exec grep -l ,minHeight {} \; \
-        -exec sed -i 's/,minHeight/,frame:false,minHeight/g' {} \;
 
     # Copy icons
     mkdir -p "${pkgdir}/usr/share/icons/hicolor/"{128x128,256x256,512x512}"/apps/"
