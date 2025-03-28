@@ -13,13 +13,17 @@ My collection of improved PKGBUILDs for Arch Linux applications.
 - Extracted from AppImage - faster startup
 - Updated with the latest versions
 - Added `electron-flags.conf` support
-- Fixed double window header issue on GNOME/KDE ([issue #837](https://github.com/getcursor/cursor/issues/837))
 
 ### Studio 3T (MongoDB Client)
 
 - Updated with the latest versions
 - Removed useless shortcuts from desktop and app menu
 - Cleaner installation, no `gendesk` needed
+
+### Mesa
+
+- Updated with the latest versions
+- Reverted the [problematic commit](https://gitlab.freedesktop.org/mesa/mesa/-/commit/8c91624614c1f939974fe0d2d1a3baf83335cecb) that causes artefacts on AMD iGPU ([issue #12809](https://gitlab.freedesktop.org/mesa/mesa/-/issues/12809))
 
 ## Pre-Installation
 
@@ -45,4 +49,4 @@ My collection of improved PKGBUILDs for Arch Linux applications.
    makepkg -si
    ```
 
-Packages are installed with `-n` suffix to avoid confusion with the AUR counterparts, but they MUST not co-exist.
+Except for `mesa`, packages are installed with `-n` suffix to avoid confusion with the AUR counterparts, but they MUST not co-exist.

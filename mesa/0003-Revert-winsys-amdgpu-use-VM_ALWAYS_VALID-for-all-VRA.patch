@@ -1,0 +1,30 @@
+From 5042b5672b7f6e27327b0153c3bf2e7a28049646 Mon Sep 17 00:00:00 2001
+From: Vorapol Rinsatitnon <vorapol.r@pm.me>
+Date: Fri, 28 Mar 2025 20:26:50 +0700
+Subject: [PATCH] Revert "winsys/amdgpu: use VM_ALWAYS_VALID for all VRAM and
+ GTT allocations"
+
+This reverts commit 8c91624614c1f939974fe0d2d1a3baf83335cecb.
+---
+ src/gallium/winsys/amdgpu/drm/amdgpu_bo.c | 5 -----
+ 1 file changed, 5 deletions(-)
+
+diff --git a/src/gallium/winsys/amdgpu/drm/amdgpu_bo.c b/src/gallium/winsys/amdgpu/drm/amdgpu_bo.c
+index 2f0678703ec..766cbf3d25c 100644
+--- a/src/gallium/winsys/amdgpu/drm/amdgpu_bo.c
++++ b/src/gallium/winsys/amdgpu/drm/amdgpu_bo.c
+@@ -618,11 +618,6 @@ static struct amdgpu_winsys_bo *amdgpu_create_bo(struct amdgpu_winsys *aws,
+    if (flags & RADEON_FLAG_GTT_WC)
+       request.flags |= AMDGPU_GEM_CREATE_CPU_GTT_USWC;
+ 
+-   if (aws->info.has_local_buffers &&
+-       initial_domain & (RADEON_DOMAIN_VRAM_GTT | RADEON_DOMAIN_DOORBELL) &&
+-       flags & RADEON_FLAG_NO_INTERPROCESS_SHARING)
+-      request.flags |= AMDGPU_GEM_CREATE_VM_ALWAYS_VALID;
+-
+    if (flags & RADEON_FLAG_DISCARDABLE &&
+        aws->info.drm_minor >= 47)
+       request.flags |= AMDGPU_GEM_CREATE_DISCARDABLE;
+-- 
+2.49.0
+
