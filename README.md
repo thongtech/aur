@@ -58,4 +58,4 @@ My collection of improved PKGBUILDs for Arch Linux applications.
    makepkg -si
    ```
 
-Except for `mesa`, packages are installed with `-n` suffix to avoid confusion with the AUR counterparts, but they MUST not co-exist.
+Except for `mesa` and `linux-888`, packages are installed with `-n` suffix to avoid confusion with the AUR counterparts, but they MUST not co-exist.
