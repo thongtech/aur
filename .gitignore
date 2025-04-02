@@ -1,5 +1,8 @@
 */src
 */pkg
-*/*.tar.gz
-*/*.pkg.tar*
+*/*.tar.*
 */*.AppImage
+linux-888/0001-*.patch
+linux-888/dkms-clang.patch
+linux-888/config*
+linux-888/*.sh
