@@ -1,6 +1,6 @@
 # aur
 
-My collection of improved PKGBUILDs for Arch Linux applications.
+My collection of improved PKGBUILDs for Arch Linux applications and kernels.
 
 ### Bootstrap Studio (Website Builder)
 
@@ -54,4 +54,4 @@ My collection of improved PKGBUILDs for Arch Linux applications.
    makepkg -si
    ```
 
-Except for `mesa` and `linux-888`, packages are installed with `-n` suffix to avoid confusion with the AUR counterparts, but they MUST not co-exist.
+Except for `linux-888`, packages are installed with `-n` suffix to avoid confusion with the AUR counterparts, but they MUST not co-exist.
