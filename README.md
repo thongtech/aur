@@ -22,13 +22,28 @@ My collection of improved PKGBUILDs for Arch Linux applications and kernels.
 
 ### Linux-888 (Custom Kernel)
 
-- A lightweight Arch Linux kernel based on CachyOS's latest [linux-cachyos-bore](https://github.com/CachyOS/linux-cachyos/tree/master/linux-cachyos-bore)
-- Initially configured with `localmodconfig` based on my system — **unneeded drivers and components removed**
-- Full support for Qualcomm FastConnect 7800 Wi-Fi 7 cards (WCN785x chipset), including:
-  - Latest `ath` drivers from the [ath-next Git branch](https://web.git.kernel.org/pub/scm/linux/kernel/git/ath/ath.git/log/?h=ath-next), with all the latest fixes and improvements
-  - Support for 14 new USB device IDs from `linux-next` ([commit c7629c](https://web.git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/drivers/bluetooth/btusb.c?h=next-20250328&id=c7629ccfa175e16bb44a60c469214e1a6051f63d), [commit 2dd1c1](https://web.git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/drivers/bluetooth/btusb.c?h=next-20250328&id=2dd1c1eee3e496fcc16971be4db5bb792a36025c)) — crucial for Bluetooth audio support
-- All performance optimisation options are enabled + ThinLTO
-- **Important:** `PKGBUILD` requires customisation to match your specific hardware and usage patterns
+- A **high-performance Arch Linux kernel** based on CachyOS's [linux-cachyos-bore](https://github.com/CachyOS/linux-cachyos/tree/master/linux-cachyos-bore)
+- Optimised for modern x86_64 desktop systems with **significant size and performance improvements**
+- **It's SMALLER**
+  - Unused filesystems and storage drivers **removed**
+  - Unnecessary hardware support and protocols **disabled**
+  - Enterprise and virtualisation features **stripped**
+  - Debugging, tracing, and coredump overhead **eliminated**
+- **It's FASTER**
+  - **Native CPU optimisations** tailored to your CPU
+  - **Full preemption** with dynamic scheduling
+  - **1000Hz tick rate** for reduced latency
+  - **O3** compiler optimisations enabled
+  - **ThinLTO** link-time optimisation
+  - **Transparent HugePages** always active
+  - **TCP BBRv3** congestion control implemented
+- **It's still SECURE**
+  - Essential security modules **retained**
+  - **User namespace support** for containerisation
+- **Full support for Qualcomm FastConnect 7800** Wi-Fi 7 cards (WCN785x chipset), including:
+  - **Latest `ath` drivers** from the [ath-next Git branch](https://web.git.kernel.org/pub/scm/linux/kernel/git/ath/ath.git/log/?h=ath-next)
+  - Support for **14 new USB device IDs** from `linux-next` ([commit c7629c](https://web.git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/drivers/bluetooth/btusb.c?h=next-20250328&id=c7629ccfa175e16bb44a60c469214e1a6051f63d), [commit 2dd1c1](https://web.git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/drivers/bluetooth/btusb.c?h=next-20250328&id=2dd1c1eee3e496fcc16971be4db5bb792a36025c)) — **crucial for Bluetooth audio support**
+- **Important: `PKGBUILD` requires customisation** to match your specific hardware and usage patterns as it is based on my system
 
 ## Pre-Installation
 
