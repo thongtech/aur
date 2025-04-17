@@ -344,7 +344,7 @@ prepare() {
   disable_config_pattern "(AIX|MAC|MINIX|SOLARIS_X86|LDM|KARMA)_(SUB)?PARTITION"
   disable_config_pattern "(DEBUG_(BOOT_PARAMS|WX|SHIRQ)|KEXEC(_FILE)?)"
   disable_config_pattern "(PCSPKR|MEDIA|CHROME|MELLANOX|SURFACE|X86)_PLATFORM(S|_DRIVERS.*)?"
-  disable_config_pattern ".*(HYPERV|XEN|VIRTIO|LWTUNNEL|RAID).*"
+  disable_config_pattern ".*(XEN|VIRTIO|LWTUNNEL|RAID).*"
   disable_config_pattern ".*(STATS|QUOTA|DEBUG((_)?FS|_CORE)?|DUMP)"
   disable_config_pattern ".*APPLE(?!_MFI_FASTCHARGE).*"
   disable_config_pattern ".+(DUMMY|TRACING|TABLET|TEST)"
