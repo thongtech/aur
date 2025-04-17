@@ -22,10 +22,10 @@ My collection of improved PKGBUILDs for Arch Linux applications and kernels.
 
 ### Linux-888 (Custom Kernel)
 
-- A **high-performance Arch Linux kernel** based on CachyOS's [linux-cachyos-bore](https://github.com/CachyOS/linux-cachyos/tree/master/linux-cachyos-bore)
+- A **high-performance Arch Linux kernel** based on CachyOS's [linux-cachyos-bore](https://github.com/CachyOS/linux-cachyos/tree/master/linux-cachyos-bore), aiming for minimal module footprint through `localmodconfig`
 - Optimised for modern x86_64 desktop systems with **significant size and performance improvements**
-- **It's SMALLER**
-  - Unused filesystems and storage drivers **removed**
+- **It's LIGHTER — up to 50%!**
+  - All unused filesystems and drivers **removed** (See [modprobed.db](https://wiki.archlinux.org/title/Modprobed-db))
   - Unnecessary hardware support and protocols **disabled**
   - Enterprise and virtualisation features **stripped**
   - Debugging, tracing, and coredump overhead **eliminated**
@@ -34,7 +34,7 @@ My collection of improved PKGBUILDs for Arch Linux applications and kernels.
   - **Full preemption** with dynamic scheduling
   - **1000Hz tick rate** for reduced latency
   - **O3** compiler optimisations enabled
-  - **ThinLTO** link-time optimisation
+  - **Full LTO** link-time optimisation
   - **Transparent HugePages** always active
   - **TCP BBRv3** congestion control implemented
 - **It's still SECURE**

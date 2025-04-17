@@ -4,7 +4,7 @@ _minor=2
 pkgver=${_major}.${_minor}
 _stable=${_major}.${_minor}
 _srcname=linux-${_stable}
-pkgdesc='A kernel based on linux-cachyos-bore-lto'
+pkgdesc='An optimised kernel based on linux-cachyos-bore-lto'
 pkgrel=1
 arch=('x86_64')
 url='https://github.com/archlinux/linux'
@@ -49,6 +49,9 @@ export KBUILD_BUILD_USER="$pkgbase"
 export KBUILD_BUILD_TIMESTAMP="$(date -Ru${SOURCE_DATE_EPOCH:+d @$SOURCE_DATE_EPOCH})"
 
 prepare() {
+  # modprobed.db path
+  MODPROBED_DB="$HOME/.config/modprobed.db"
+
   git clone --depth 1 --branch ath-next https://git.kernel.org/pub/scm/linux/kernel/git/ath/ath.git
   cd "$_srcname"
 
@@ -75,178 +78,362 @@ prepare() {
   echo "Setting config..."
   cp ../config .config
 
+  # Must use modprobed.db
+  if [ -e "$MODPROBED_DB" ]; then
+    yes "" | make "${BUILD_FLAGS[@]}" LSMOD="$MODPROBED_DB" localmodconfig > debug_localmodconfig.log 2>&1
+  else
+    echo "No modprobed.db data found" >&2
+    return 1
+  fi
+
+  ################################ HELPER FUNCTIONS ###############################
+  ###                                                                           ###
+  ###                      These are helper functions for                       ###
+  ###                     kernel configuration management                       ###
+  ###           Please scroll down to "Kernel Configuration" section            ###
+  ###                                                                           ###
+  #################################################################################
+
+  # Variables
+  local kconfig_file
+  declare -A config_changes
+
+  # Logging helper
+  log_operation() {
+    local prefix="$1"
+    local message="$2"
+    echo "$prefix $message" >> debug_kernel_cfg.log
+  }
+
+  # Get current config value
+  get_config_value() {
+    local option="$1"
+    if grep -q "^CONFIG_${option}=y$" .config; then
+      echo "y"
+    elif grep -q "^CONFIG_${option}=m$" .config; then
+      echo "m"
+    elif grep -q "^# CONFIG_${option} is not set$" .config; then
+      echo "n"
+    elif grep -q "^CONFIG_${option}=" .config; then
+      grep "^CONFIG_${option}=" .config | cut -d'=' -f2- | sed 's/^"\(.*\)"$/\1/'
+    fi
+  }
+
+  # Core config modification function
+  config_option() {
+    local operation="$1"
+    local option="$2"
+    local value="$3"
+    local record="${4:-true}"
+    
+    local current_value=$(get_config_value "$option")
+    local target_value
+    
+    case "$operation" in
+      e) target_value="y" ;;
+      m) target_value="m" ;;
+      d) target_value="n" ;;
+      set-val|set-string) target_value="$value" ;;
+      *) echo "Invalid operation: $operation" >&2; return 1 ;;
+    esac
+    
+    [[ "$current_value" == "$target_value" ]] && {
+      log_operation "==" "${option} already set to ${target_value}"
+      return 0
+    }
+    
+    local prefix
+    case "$operation" in
+      e) prefix="++" ;;
+      m) prefix="+" ;;
+      d) prefix="-" ;;
+      *) prefix="=" ;;
+    esac
+    
+    log_operation "$prefix" "${option} (${current_value} -> ${target_value})"
+    case "$operation" in
+      e|m|d) scripts/config -"$operation" "$option" ;;
+      *) scripts/config --"$operation" "$option" "$value" ;;
+    esac
+    [[ "$record" == "true" ]] && config_changes["$option"]="${value:-$target_value}"
+    
+    return 0
+  }
+
+  # Pattern-based config operations
+  copy_config_pattern() {
+    local pattern="$1"
+    local count=0
+    
+    log_operation "~~~" "Copying pattern: $pattern from original config"
+    
+    while IFS= read -r line; do
+      if [[ $line =~ ^CONFIG_${pattern}= ]]; then
+        local key="${line%%=*}" value="${line#*=}"
+        key="${key#CONFIG_}" value="${value//\"/}"
+        
+        case "$value" in
+          y) config_option e "$key" "" false ;;
+          m) config_option m "$key" "" false ;;
+          *) config_option set-val "$key" "$value" false ;;
+        esac
+        ((count++)) || true
+      elif [[ $line =~ ^#\ CONFIG_${pattern}\ is\ not\ set ]]; then
+        config_option d "${line#\# CONFIG_}" "" false
+        ((count++)) || true
+      fi
+    done < "../config"
+    
+    log_operation "=" "$([[ $count -eq 0 ]] && echo "Error: No options matched pattern '$pattern'" || echo "Successfully copied $count options")"
+  }
+
+  # Disable configs matching pattern
+  disable_config_pattern() {
+    local pattern="$1"
+    local count=0
+    
+    log_operation "~~~" "Disabling pattern: $pattern"
+    
+    while read -r line; do
+      local key="${line%%=*}"
+      key="${key#CONFIG_}"
+      config_option d "$key" "" false
+      ((count++)) || true
+    done < <(grep -P "^CONFIG_$pattern=[ym]" .config)
+    
+    log_operation "=" "$([[ $count -eq 0 ]] && echo "Error: No options matched pattern '$pattern'" || echo "Successfully disabled $count options")"
+  }
+
+  # Enable configs matching pattern
+  enable_config_pattern() {
+    local pattern="$1" value="$2" count=0
+    
+    [[ ! "$value" =~ ^[em]$ ]] && { echo "Error: value must be either 'e' or 'm'" >&2; return 1; }
+    
+    log_operation "~~~" "Enabling pattern: $pattern with value $value"
+    
+    local search_value=$([[ $value == "e" ]] && echo "m" || echo "y")
+    local regex="^(# CONFIG_${pattern} is not set|CONFIG_${pattern}=${search_value}$)"
+    
+    while read -r line; do
+      if [[ $line =~ ^#\ CONFIG_(.*)\ is\ not\ set ]]; then
+        config_option "$value" "${BASH_REMATCH[1]}"
+      elif [[ $line =~ ^CONFIG_(.*)=${search_value}$ ]]; then
+        config_option "$value" "${BASH_REMATCH[1]}"
+      fi
+      ((count++)) || true
+    done < <(grep -P "$regex" .config)
+    
+    log_operation "=" "$([[ $count -eq 0 ]] && echo "Error: No options matched pattern '$pattern'" || echo "Successfully enabled $count options")"
+  }
+
+  ############################# HELPER FUNCTIONS: END #############################
+
+  # Some configs are missed by localmodconfig
+  echo "Copying specific configurations from original config..."
+  copy_config_pattern ".*(INTEL|AMD).*"
+  copy_config_pattern "CRYPTO.*"
+  copy_config_pattern "SND_(HDA|SOC).*"
+
+  # Native CPU optimisation
   chmod +x "${srcdir}"/auto-cpu-optimization.sh
   "${srcdir}"/auto-cpu-optimization.sh
 
-  scripts/config -e CACHY
+  # CachyOS configs
+  config_option e CACHY
 
-  scripts/config -e SCHED_BORE
+  config_option e SCHED_BORE
 
-  scripts/config -e LTO_CLANG_THIN
+  config_option e LTO_CLANG_FULL
 
-  scripts/config -d HZ_300 \
-            -e HZ_1000 \
-            --set-val HZ "1000"
+  config_option d HZ_300
+  config_option e HZ_1000
+  config_option set-val HZ "1000"
 
-  scripts/config -d CPU_FREQ_DEFAULT_GOV_SCHEDUTIL \
-            -e CPU_FREQ_DEFAULT_GOV_PERFORMANCE
+  config_option d CPU_FREQ_DEFAULT_GOV_SCHEDUTIL
+  config_option e CPU_FREQ_DEFAULT_GOV_PERFORMANCE
 
-  scripts/config -d HZ_PERIODIC \
-            -d NO_HZ_IDLE \
-            -e NO_HZ_FULL \
-            -e NO_HZ \
-            -e NO_HZ_COMMON \
-            -e CONTEXT_TRACKING
+  config_option d HZ_PERIODIC
+  config_option d NO_HZ_IDLE
+  enable_config_pattern "NO_HZ(_(FULL|COMMON))?" e
+  config_option e CONTEXT_TRACKING
 
-  scripts/config -e PREEMPT_DYNAMIC \
-            -e PREEMPT \
-            -d PREEMPT_VOLUNTARY \
-            -d PREEMPT_LAZY \
-            -d PREEMPT_NONE
+  config_option e PREEMPT_DYNAMIC
+  config_option e PREEMPT
+  disable_config_pattern "PREEMPT_(VOLUNTARY|LAZY|NONE)"
 
-  scripts/config -d CC_OPTIMIZE_FOR_PERFORMANCE \
-            -e CC_OPTIMIZE_FOR_PERFORMANCE_O3
+  config_option d CC_OPTIMIZE_FOR_PERFORMANCE
+  config_option e CC_OPTIMIZE_FOR_PERFORMANCE_O3
 
-  scripts/config -d TRANSPARENT_HUGEPAGE_MADVISE \
-            -e TRANSPARENT_HUGEPAGE_ALWAYS
+  config_option d TRANSPARENT_HUGEPAGE_MADVISE
+  config_option e TRANSPARENT_HUGEPAGE_ALWAYS
 
-  scripts/config -e USER_NS
+  config_option e USER_NS
 
-  # Logs
-  DEBUG_LOG="debug_kernel_cfg.log"
-
-  # Helper functions
-  disable_config_pattern() {
-    local pattern="$1"
-    
-    echo "======================================" >> "$DEBUG_LOG"
-    echo "Disabling pattern: $pattern" >> "$DEBUG_LOG"
-    echo "======================================" >> "$DEBUG_LOG"
-    
-    grep -E "^CONFIG_$pattern=[ym]" .config | while IFS= read -r line; do
-      key=$(echo "$line" | cut -d= -f1 | sed 's/^CONFIG_//')
-
-      echo "-$key" >> "$DEBUG_LOG"
-      scripts/config -d "$key"
-    done
-  }
-
-  disable_config_awk() {
-    local kconfig_file="$1"
-    local awk_pattern="$2"
-    local description="$3"
-    
-    if [ -z "$description" ]; then
-      echo "Error: Description is required for disable_config_awk" >&2
-      return 1
-    fi
-    
-    echo "======================================" >> "$DEBUG_LOG"
-    echo "Disabling: $description" >> "$DEBUG_LOG"
-    echo "======================================" >> "$DEBUG_LOG"
-    
-    awk "$awk_pattern" "$kconfig_file" | while IFS= read -r line; do
-      config=$(echo "$line" | cut -d= -f1 | sed 's/^config //')
-      
-      echo "-$config" >> "$DEBUG_LOG"
-      scripts/config -d "$config"
-    done
-  }
-
-  # TCP BBR
+  # TCP BBRv3
   disable_config_pattern "TCP_CONG_.*"
   disable_config_pattern "NET_SCH_.*"
-  scripts/config -e TCP_CONG_ADVANCED \
-            -e TCP_CONG_BBR \
-            -e DEFAULT_BBR \
-            -e NET_SCH_DEFAULT \
-            -e NET_SCH_FQ \
-            -e DEFAULT_FQ
+  enable_config_pattern "TCP_CONG_(ADVANCED|BBR)" e
+  config_option e DEFAULT_BBR
+  config_option e NET_SCH_DEFAULT
+  enable_config_pattern "NET_SCH_(HTB|FQ_CODEL|FQ)" m
+  config_option e NET_SCH_CAKE
+  config_option d DEFAULT_FQ_CODEL
+  config_option e DEFAULT_FQ
 
-  # Expert option
-  scripts/config -e EXPERT \
-            -e PROCESSOR_SELECT
+  # Expert options
+  config_option e EXPERT
+  config_option e PROCESSOR_SELECT
   
-  # Kernel Configuration
-  ### Platform-specific, MUST EDIT
-  disable_config_pattern ".*(HYGON|CENTAUR|ZHAOXIN|STATS|QUOTA|DEBUG((_)?FS|_CORE)?|DUMP|_DUMMY|TRACING|_(PCM)?TEST(ING)?|TABLET(S)?|TOUCHSCREEN)"
-  disable_config_pattern "(KEXEC|FIREWIRE|TINYDRM|VMWARE|IWL[0-9]|IPW|XIL).*"
-  disable_config_pattern ".*(VIA|NVIDIA|NFORCE|IBM|MLX|RAID|DEPRECATED|_(SIS|XIL|TI_)).*"
-  disable_config_pattern ".*((AFFS|BCACHEFS|BEFS|BTRFS|ECRYPT|EROFS|F2FS|JFFS2|UBIFS|GFS2|HFSPLUS|HFS|JFS|MINIX|NILFS2|OCFS2|OMFS|ORANGEFS|ROMFS|UFS|ZISOFS|ZONEFS)_FS)|(CEPH|CRAMFS|ZISOFS).*"
+  ############################ KERNEL CONFIGURATION ##############################
+  ###                                                                          ###
+  ###                        Platform-Specific Settings                        ###
+  ###                                                                          ###
+  ###       These components are disabled by default but may be required       ###
+  ###       depending on your hardware configuration. Please review and        ###
+  ###       enable any necessary options for your system.                      ###
+  ###                                                                          ###
+  ################################################################################
+
+  config_option d ACCESSIBILITY
+  config_option d AGP
+  config_option d ANDROID_BINDER_IPC
+  config_option d ATA_SFF
+  config_option d AUDIT
+  config_option d BSD_DISKLABEL
+  config_option d BTRFS_FS
+  config_option d DCB
+  config_option d EDAC
+  config_option d FUNCTION_ERROR_INJECTION
+  config_option d FUSION
+  config_option d GOOGLE_FIRMWARE
+  config_option d HAMRADIO
+  config_option d HIBERNATION
+  config_option d HTE
+  config_option d HYPERVISOR_GUEST
+  config_option d INTEL_TH
+  config_option d INTERCONNECT
+  config_option d ISDN
+  config_option d KFENCE
+  config_option d MACINTOSH_DRIVERS
+  config_option d MCTP
+  config_option d MEMORY_FAILURE
+  config_option d MMIOTRACE
+  config_option d MPLS
+  config_option d MPTCP
+  config_option d MTD
+  config_option d PM_DEVFREQ
+  config_option d PROC_KCORE
+  config_option d PROFILING
+  config_option d RC_CORE
+  config_option d REMOTEPROC
+  config_option d RUNTIME_TESTING_MENU
+  config_option d SERIAL_NONSTANDARD
+  config_option d SOC_TI
+  config_option d STAGING
+  config_option d TRACER_SNAPSHOT
+  config_option d UPROBE_EVENTS
+  config_option d USB_ACM
+  config_option d VIRT_DRIVERS
+  config_option d WATCHDOG
+  config_option d ZSWAP
+
+  ### Bulk disable configs
+  disable_config_pattern "((NET|WLAN)_VENDOR.+|.+PHY)"
+  disable_config_pattern "(?!FUNCTION).+_TRACER"
   disable_config_pattern "(AIX|MAC|MINIX|SOLARIS_X86|LDM|KARMA)_(SUB)?PARTITION"
-  disable_config_pattern "(ATA_(OVER_ETH|SFF)|BT_(HCIBTUSB_(BCM|MTK|RTL)|HCI(UART|BCM.*)|MTK.*))"
-  disable_config_pattern "(BLK_DEV_(DRBD|FD|MD|NBD|NULL_BLK|RAM|RBD|UBLK|IO_TRACE)|DEBUG_(BOOT_PARAMS|WX|SHIRQ))"
-  disable_config_pattern "DRM_(AMDGPU_(CIK|SI)|AST|GMA500|MGAG200|NOUVEAU|RADEON|VBOXVIDEO|VMWGFX)"
-  disable_config_pattern "(INPUT_(JOY.*)|MEDIA_((ANALOG|DIGITAL)_TV|RADIO|TEST)_SUPPORT)"
-  disable_config_pattern "(IRQSOFF|PREEMPT|SCHED|HWLAT|OSNOISE|TIMERLAT|ATH5K|STACK)_TRACER"
+  disable_config_pattern "(DEBUG_(BOOT_PARAMS|WX|SHIRQ)|KEXEC(_FILE)?)"
+  disable_config_pattern "(PCSPKR|MEDIA|CHROME|MELLANOX|SURFACE|X86)_PLATFORM(S|_DRIVERS.*)?"
+  disable_config_pattern ".*(HYPERV|XEN|VIRTIO|LWTUNNEL|RAID).*"
+  disable_config_pattern ".*(STATS|QUOTA|DEBUG((_)?FS|_CORE)?|DUMP)"
+  disable_config_pattern ".*APPLE(?!_MFI_FASTCHARGE).*"
+  disable_config_pattern ".+(DUMMY|TRACING|TABLET|TEST)"
+  disable_config_pattern ".+(HYGON|CENTAUR|ZHAOXIN)"
+  disable_config_pattern "BT_(HCIBTUSB_(BCM|MTK|RTL)|INTEL_PCIE)"
+  disable_config_pattern "HOTPLUG_PCI_(CPCI|SHPC)"
+  disable_config_pattern "INPUT_(MOUSE|TOUCHSCREEN|JOY.+)"
+  disable_config_pattern "IP(V6)?_(MROUTE|ADVANCED_ROUTER)"
+  disable_config_pattern "MEDIA_((ANALOG|DIGITAL)_TV|RADIO|TEST)_SUPPORT"
+  disable_config_pattern "NET(LABEL|KIT|_(NCSI|FC|SWITCHDEV|L3_MASTER_DEV))"
+  disable_config_pattern "NETWORK_(FILESYSTEMS|PHY_TIMESTAMPING|SECMARK)"
+  disable_config_pattern "NF_CT_PROTO_(DCCP|SCTP)"
+  disable_config_pattern "SATA_(AHCI|ZPODD)"
+  disable_config_pattern "SCSI_(LOWLEVEL|DH|LOGGING)"
+  disable_config_pattern "SND_(SOC_(AC97_CODEC|IMG)|INTEL8X0.*|SST_ATOM.+)"
   disable_config_pattern "SECURITY_(SMACK|TOMOYO|LOADPIN|APPARMOR)"
-  disable_config_pattern "(VIDEO_(USBTV|TVAUDIO|MGB4|SOLO6X10|EM28XX|TW.*)|VGA_(ARB|SWITCHEROO))"
+  disable_config_pattern "VGA_(ARB|SWITCHEROO)"
+  disable_config_pattern "ZRAM_BACKEND_(?!ZSTD).+"
 
-  ### AC97
-  disable_config_awk "sound/pci/Kconfig" '
-    /^config / { config=$2; capture=0 }
-    /select SND_AC97_CODEC/ { capture=1 }
-    /^$/ { if (capture) print config; config=""; capture=0 }
-    END { if (capture) print config }
-  ' "AC97"
+  # CPU vendor dependent
+  ## Intel
+  if grep -q "GenuineIntel" /proc/cpuinfo; then
+    # Strip all AMD components
+    disable_config_pattern ".*AMD.*"
+    disable_config_pattern "PINCTRL_(?!(TIGERLAKE|ALDERLAKE)).*"
+    config_option e WLAN_VENDOR_INTEL
+  else
+    ## AMD
+    # Several libs are shared with Intel
+    disable_config_pattern "(?!(BT|CRYPTO|PERF|SND|SOUNDWIRE|X86)_).*INTEL.*"
+    enable_config_pattern "INTEL_RAPL(_CORE)?" m
+    disable_config_pattern "PINCTRL_(?!AMD).*"
+    config_option e WLAN_VENDOR_ATH
+  fi
 
-  scripts/config -d ACCESSIBILITY \
-            -d AGP \
-            -d ANDROID_BINDER_IPC \
-            -d ATM \
-            -d AUDIT \
-            -d BSD_DISKLABEL \
-            -d CAN \
-            -d CHROME_PLATFORMS \
-            -d CXL_BUS \
-            -d FDDI \
-            -d FPGA \
-            -d FUNCTION_ERROR_INJECTION \
-            -d GAMEPORT \
-            -d GNSS \
-            -d GOOGLE_FIRMWARE \
-            -d HAMRADIO \
-            -d HIBERNATION \
-            -d HID_APPLE \
-            -d HYPERV \
-            -d INFINIBAND \
-            -d IPACK_BUS \
-            -d ISDN \
-            -d KFENCE \
-            -d MACINTOSH_DRIVERS \
-            -d MCB \
-            -d MELLANOX_PLATFORM \
-            -d MEMTEST \
-            -d MMIOTRACE \
-            -d MWAVE \
-            -d NETWORK_FILESYSTEMS \
-            -d NFC \
-            -d PARPORT \
-            -d PCCARD \
-            -d PHONET \
-            -d PROC_KCORE \
-            -d PROFILING \
-            -d RC_CORE \
-            -d RUNTIME_TESTING_MENU \
-            -d SCSI_IPR_TRACE \
-            -d SIOX \
-            -d SLIMBUS \
-            -d SND_SOC_AC97_CODEC \
-            -d SURFACE_PLATFORMS \
-            -d TRACER_SNAPSHOT \
-            -d UPROBE_EVENTS \
-            -d USB_GADGET \
-            -d VBOXGUEST \
-            -d VMXNET3 \
-            -d WATCHDOG \
-            -d XEN \
-            -d ZSWAP
+  ########################### KERNEL CONFIGURATION: END ###########################
+
+  # Fix Arch initcpios warnings
+  config_option m THINKPAD_ACPI
+  config_option m DM_INTEGRITY
 
   ### Rewrite configuration
   echo "Rewriting configuration..."
   yes "" | make "${BUILD_FLAGS[@]}" prepare > debug_prepare.log 2>&1
   yes "" | make "${BUILD_FLAGS[@]}" config > debug_config.log 2>&1
   echo "Config rewritten"
+
+  ### Verify configuration
+  verify_config() {
+    local key="${1#CONFIG_}" expected="$2" actual_value
+    
+    # Skip special configs
+    [[ "$key" =~ ^(ARCH|HAVE|WANT)_ ]] && return 0
+    
+    # Get actual value
+    actual_value=$(get_config_value "$key")
+    [[ -z "$actual_value" ]] && { 
+      errors+=("Option CONFIG_$key was set to '$expected' but is missing")
+      return 0
+    }
+    
+    if [[ "$expected" == "n" && "$actual_value" != "n" ]]; then
+      errors+=("Option CONFIG_$key was DISABLED but is set to '$actual_value'")
+      return 0
+    elif [[ "$actual_value" != "$expected" ]]; then
+      errors+=("Option CONFIG_$key was set to '$expected' but is '$actual_value'")
+      return 0
+    fi
+    
+    return 0
+  }
+
+  echo "Verifying configuration..."
+  local errors=()
+  
+  # Verify all stored changes
+  for full_key in "${!config_changes[@]}"; do
+    verify_config "$full_key" "${config_changes[$full_key]}"
+  done
+
+  # Report verification results
+  if ((${#errors[@]} > 0)); then
+    printf "Configuration verification failed!\nThe following options were not set as expected:\n"
+    printf '%s\n' "${errors[@]}"
+    echo "Please check your kernel configuration and dependencies."
+    exit 1
+  else
+    echo "Configuration verification successful!"
+  fi
 
   ### Prepared version
   make -s kernelrelease > version
@@ -255,7 +442,7 @@ prepare() {
 
 build() {
   cd "$_srcname"
-  make "${BUILD_FLAGS[@]}" -j"$(nproc)" all
+  make "${BUILD_FLAGS[@]}" -j"$(nproc)" all 2> build-errors.log
   make -C tools/bpf/bpftool vmlinux.h feature-clang-bpf-co-re=1
 }
 
