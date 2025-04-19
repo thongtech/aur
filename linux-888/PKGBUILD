@@ -303,12 +303,15 @@ prepare() {
   config_option d BSD_DISKLABEL
   config_option d BTRFS_FS
   config_option d DCB
+  config_option d DEVMEM
+  config_option d DEVPORT
   config_option d EDAC
   config_option d FUNCTION_ERROR_INJECTION
   config_option d FUSION
   config_option d GOOGLE_FIRMWARE
   config_option d HAMRADIO
   config_option d HIBERNATION
+  config_option d HPET
   config_option d HTE
   config_option d HYPERVISOR_GUEST
   config_option d INTEL_TH
@@ -322,12 +325,16 @@ prepare() {
   config_option d MPLS
   config_option d MPTCP
   config_option d MTD
+  config_option d PCIE_DW_PLAT_HOST
   config_option d PM_DEVFREQ
   config_option d PROC_KCORE
   config_option d PROFILING
+  config_option d PSE_CONTROLLER
   config_option d RC_CORE
   config_option d REMOTEPROC
   config_option d RUNTIME_TESTING_MENU
+  config_option d SERIAL_8250
+  config_option d SERIAL_DEV_BUS
   config_option d SERIAL_NONSTANDARD
   config_option d SOC_TI
   config_option d STAGING
@@ -339,7 +346,7 @@ prepare() {
   config_option d ZSWAP
 
   ### Bulk disable configs
-  disable_config_pattern "((NET|WLAN)_VENDOR.+|.+PHY)"
+  disable_config_pattern "((NET|WLAN)_VENDOR.+|.+PHY|PHY_.+)"
   disable_config_pattern "(?!FUNCTION).+_TRACER"
   disable_config_pattern "(AIX|MAC|MINIX|SOLARIS_X86|LDM|KARMA)_(SUB)?PARTITION"
   disable_config_pattern "(DEBUG_(BOOT_PARAMS|WX|SHIRQ)|KEXEC(_FILE)?)"
@@ -349,6 +356,7 @@ prepare() {
   disable_config_pattern ".*APPLE(?!_MFI_FASTCHARGE).*"
   disable_config_pattern ".+(DUMMY|TRACING|TABLET|TEST)"
   disable_config_pattern ".+(HYGON|CENTAUR|ZHAOXIN)"
+  disable_config_pattern ".+_(SLAVE|BAYTRAIL)"
   disable_config_pattern "BT_(HCIBTUSB_(BCM|MTK|RTL)|INTEL_PCIE)"
   disable_config_pattern "HOTPLUG_PCI_(CPCI|SHPC)"
   disable_config_pattern "INPUT_(MOUSE|TOUCHSCREEN|JOY.+)"
@@ -359,7 +367,8 @@ prepare() {
   disable_config_pattern "NF_CT_PROTO_(DCCP|SCTP)"
   disable_config_pattern "SATA_(AHCI|ZPODD)"
   disable_config_pattern "SCSI_(LOWLEVEL|DH|LOGGING)"
-  disable_config_pattern "SND_(SOC_(AC97_CODEC|IMG)|INTEL8X0.*|SST_ATOM.+)"
+  disable_config_pattern "SND_(SOC_(AC97_CODEC|IMG|(XIL|FSL|XTFPGA).+)|INTEL8X0.*|SST_ATOM.+)"
+  disable_config_pattern "SND_HDA_(CODEC_(?!REALTEK|HDMI)|SCODEC_(?!COMPONENT)).*"
   disable_config_pattern "SECURITY_(SMACK|TOMOYO|LOADPIN|APPARMOR)"
   disable_config_pattern "VGA_(ARB|SWITCHEROO)"
   disable_config_pattern "ZRAM_BACKEND_(?!ZSTD).+"
@@ -369,6 +378,7 @@ prepare() {
   if grep -q "GenuineIntel" /proc/cpuinfo; then
     # Strip all AMD components
     disable_config_pattern ".*AMD.*"
+    config_option m PINCTRL_ALDERLAKE
     disable_config_pattern "PINCTRL_(?!(TIGERLAKE|ALDERLAKE)).*"
     config_option e WLAN_VENDOR_INTEL
   else
