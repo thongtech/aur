@@ -360,7 +360,7 @@ prepare() {
   disable_config_pattern "BT_(HCIBTUSB_(BCM|MTK|RTL)|INTEL_PCIE)"
   disable_config_pattern "HOTPLUG_PCI_(CPCI|SHPC)"
   disable_config_pattern "INPUT_(MOUSE|TOUCHSCREEN|JOY.+)"
-  disable_config_pattern "IP(V6)?_(MROUTE|ADVANCED_ROUTER)"
+  disable_config_pattern "IP(V6)?_MROUTE"
   disable_config_pattern "MEDIA_((ANALOG|DIGITAL)_TV|RADIO|TEST)_SUPPORT"
   disable_config_pattern "NET(LABEL|KIT|_(NCSI|FC|SWITCHDEV|L3_MASTER_DEV))"
   disable_config_pattern "NETWORK_(FILESYSTEMS|PHY_TIMESTAMPING|SECMARK)"
