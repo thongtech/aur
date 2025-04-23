@@ -42,7 +42,6 @@ My collection of improved PKGBUILDs for Arch Linux applications and kernels.
   - **User namespace support** for containerisation
 - **Full support for Qualcomm FastConnect 7800** Wi-Fi 7 cards (WCN785x chipset), including:
   - **Latest `ath` drivers** from the [ath-next Git branch](https://web.git.kernel.org/pub/scm/linux/kernel/git/ath/ath.git/log/?h=ath-next)
-  - Support for **14 new USB device IDs** from `linux-next` ([commit c7629c](https://web.git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/drivers/bluetooth/btusb.c?h=next-20250328&id=c7629ccfa175e16bb44a60c469214e1a6051f63d), [commit 2dd1c1](https://web.git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/drivers/bluetooth/btusb.c?h=next-20250328&id=2dd1c1eee3e496fcc16971be4db5bb792a36025c)) — **crucial for Bluetooth audio support**
 - **Important: `PKGBUILD` requires customisation** to match your specific hardware and usage patterns as it is based on my system
 
 ## Pre-Installation
