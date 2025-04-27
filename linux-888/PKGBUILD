@@ -51,7 +51,7 @@ prepare() {
   # modprobed.db path
   MODPROBED_DB="$HOME/.config/modprobed.db"
 
-  git clone --depth 1 --branch ath-next https://git.kernel.org/pub/scm/linux/kernel/git/ath/ath.git
+  git clone --depth 1 --branch ath-next-20250418 https://git.kernel.org/pub/scm/linux/kernel/git/ath/ath.git
   cd "$_srcname"
 
   echo "Setting version..."
