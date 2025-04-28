@@ -1,0 +1,129 @@
+From dfc62320f07bf36e1edf9119b6ec5e92c422e0c9 Mon Sep 17 00:00:00 2001
+From: Vorapol Rinsatitnon <vorapol.r@pm.me>
+Date: Mon, 28 Apr 2025 17:15:50 +0700
+Subject: [PATCH] wifi: nl80211: add link id of transmitted profile for MLO
+ MBSSID
+
+---
+ include/net/cfg80211.h       |  2 ++
+ include/uapi/linux/nl80211.h |  6 ++++++
+ net/wireless/nl80211.c       | 24 +++++++++++++++++++++++-
+ 3 files changed, 31 insertions(+), 1 deletion(-)
+
+diff --git a/include/net/cfg80211.h b/include/net/cfg80211.h
+index 363d7dd22..6b9490944 100644
+--- a/include/net/cfg80211.h
++++ b/include/net/cfg80211.h
+@@ -1286,11 +1286,13 @@ struct cfg80211_crypto_settings {
+  * struct cfg80211_mbssid_config - AP settings for multi bssid
+  *
+  * @tx_wdev: pointer to the transmitted interface in the MBSSID set
++ * @tx_link_id: link ID of the transmitted profile in an MLD.
+  * @index: index of this AP in the multi bssid group.
+  * @ema: set to true if the beacons should be sent out in EMA mode.
+  */
+ struct cfg80211_mbssid_config {
+ 	struct wireless_dev *tx_wdev;
++	u8 tx_link_id;
+ 	u8 index;
+ 	bool ema;
+ };
+diff --git a/include/uapi/linux/nl80211.h b/include/uapi/linux/nl80211.h
+index f6c1b181c..fcb1727dd 100644
+--- a/include/uapi/linux/nl80211.h
++++ b/include/uapi/linux/nl80211.h
+@@ -8022,6 +8022,11 @@ enum nl80211_sar_specs_attrs {
+  *	Setting this flag is permitted only if the driver advertises EMA support
+  *	by setting wiphy->ema_max_profile_periodicity to non-zero.
+  *
++ * @NL80211_MBSSID_CONFIG_ATTR_TX_LINK_ID: Link ID of the transmitted profile.
++ *	This parameter is mandatory when NL80211_ATTR_MBSSID_CONFIG attributes
++ *	are sent for a non-transmitted profile and if the transmitted profile
++ *	is part of an MLD. For all other cases this parameter is unnecessary.
++ *
+  * @__NL80211_MBSSID_CONFIG_ATTR_LAST: Internal
+  * @NL80211_MBSSID_CONFIG_ATTR_MAX: highest attribute
+  */
+@@ -8033,6 +8038,7 @@ enum nl80211_mbssid_config_attributes {
+ 	NL80211_MBSSID_CONFIG_ATTR_INDEX,
+ 	NL80211_MBSSID_CONFIG_ATTR_TX_IFINDEX,
+ 	NL80211_MBSSID_CONFIG_ATTR_EMA,
++	NL80211_MBSSID_CONFIG_ATTR_TX_LINK_ID,
+ 
+ 	/* keep last */
+ 	__NL80211_MBSSID_CONFIG_ATTR_LAST,
+diff --git a/net/wireless/nl80211.c b/net/wireless/nl80211.c
+index b457fe786..52f2b82f2 100644
+--- a/net/wireless/nl80211.c
++++ b/net/wireless/nl80211.c
+@@ -469,6 +469,8 @@ nl80211_mbssid_config_policy[NL80211_MBSSID_CONFIG_ATTR_MAX + 1] = {
+ 	[NL80211_MBSSID_CONFIG_ATTR_INDEX] = { .type = NLA_U8 },
+ 	[NL80211_MBSSID_CONFIG_ATTR_TX_IFINDEX] = { .type = NLA_U32 },
+ 	[NL80211_MBSSID_CONFIG_ATTR_EMA] = { .type = NLA_FLAG },
++	[NL80211_MBSSID_CONFIG_ATTR_TX_LINK_ID] =
++		NLA_POLICY_MAX(NLA_U8, IEEE80211_MLD_MAX_NUM_LINKS),
+ };
+ 
+ static const struct nla_policy
+@@ -5513,11 +5515,13 @@ static int validate_beacon_tx_rate(struct cfg80211_registered_device *rdev,
+ 
+ static int nl80211_parse_mbssid_config(struct wiphy *wiphy,
+ 				       struct net_device *dev,
++					   unsigned int link_id,
+ 				       struct nlattr *attrs,
+ 				       struct cfg80211_mbssid_config *config,
+ 				       u8 num_elems)
+ {
+ 	struct nlattr *tb[NL80211_MBSSID_CONFIG_ATTR_MAX + 1];
++	int tx_link_id = -1;
+ 
+ 	if (!wiphy->mbssid_max_interfaces)
+ 		return -EOPNOTSUPP;
+@@ -5541,6 +5545,9 @@ static int nl80211_parse_mbssid_config(struct wiphy *wiphy,
+ 	    (!config->index && !num_elems))
+ 		return -EINVAL;
+ 
++	if (tb[NL80211_MBSSID_CONFIG_ATTR_TX_LINK_ID])
++		tx_link_id = nla_get_u8(tb[NL80211_MBSSID_CONFIG_ATTR_TX_LINK_ID]);
++
+ 	if (tb[NL80211_MBSSID_CONFIG_ATTR_TX_IFINDEX]) {
+ 		u32 tx_ifindex =
+ 			nla_get_u32(tb[NL80211_MBSSID_CONFIG_ATTR_TX_IFINDEX]);
+@@ -5562,10 +5569,25 @@ static int nl80211_parse_mbssid_config(struct wiphy *wiphy,
+ 			}
+ 
+ 			config->tx_wdev = tx_netdev->ieee80211_ptr;
++			/* Caller should call dev_put(config->tx_wdev) from this point */
++
++			if (config->tx_wdev->valid_links) {
++				if (tx_link_id == -1 ||
++				    !(config->tx_wdev->valid_links & BIT(tx_link_id)))
++					return -ENOLINK;
++
++				config->tx_link_id = tx_link_id;
++			}
+ 		} else {
++			if (tx_link_id >= 0 && tx_link_id != link_id)
++				return -EINVAL;
++
+ 			config->tx_wdev = dev->ieee80211_ptr;
+ 		}
+ 	} else if (!config->index) {
++		if (tx_link_id >= 0 && tx_link_id != link_id)
++			return -EINVAL;
++
+ 		config->tx_wdev = dev->ieee80211_ptr;
+ 	} else {
+ 		return -EINVAL;
+@@ -6315,7 +6337,7 @@ static int nl80211_start_ap(struct sk_buff *skb, struct genl_info *info)
+ 	}
+ 
+ 	if (info->attrs[NL80211_ATTR_MBSSID_CONFIG]) {
+-		err = nl80211_parse_mbssid_config(&rdev->wiphy, dev,
++		err = nl80211_parse_mbssid_config(&rdev->wiphy, dev, link_id,
+ 						  info->attrs[NL80211_ATTR_MBSSID_CONFIG],
+ 						  &params->mbssid_config,
+ 						  params->beacon.mbssid_ies ?
+-- 
+2.49.0
+
