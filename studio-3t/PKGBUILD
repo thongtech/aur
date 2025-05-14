@@ -1,6 +1,6 @@
 pkgname=studio-3t-n
 _pkgname=studio-3t
-pkgver=2025.6.0
+pkgver=2025.8.0
 pkgrel=1
 pkgdesc="The Professional Client, IDE and GUI for MongoDB"
 arch=('x86_64')
