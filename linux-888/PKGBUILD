@@ -1,6 +1,6 @@
 pkgbase="linux-888"
 _major=6.14
-_minor=4
+_minor=6
 pkgver=${_major}.${_minor}
 _stable=${_major}.${_minor}
 _srcname=linux-${_stable}
@@ -63,9 +63,15 @@ prepare() {
 
   echo "Applying ath driver from ath-next..."
   rm -rf "${srcdir}/${_srcname}/Documentation/devicetree/bindings/net/wireless"
+  
+  # Preserve carl9170
+  mv "${srcdir}/${_srcname}/drivers/net/wireless/ath/carl9170" "${srcdir}/carl9170_backup"
   rm -rf "${srcdir}/${_srcname}/drivers/net/wireless/ath"
+  mkdir -p "${srcdir}/${_srcname}/drivers/net/wireless/ath"
+  mv "${srcdir}/carl9170_backup" "${srcdir}/${_srcname}/drivers/net/wireless/ath/carl9170"
+  
   cp -r "${srcdir}/ath/Documentation/devicetree/bindings/net/wireless" "${srcdir}/${_srcname}/Documentation/devicetree/bindings/net/"
-  cp -r "${srcdir}/ath/drivers/net/wireless/ath" "${srcdir}/${_srcname}/drivers/net/wireless/"
+  rsync -av --exclude='carl9170' "${srcdir}/ath/drivers/net/wireless/ath/" "${srcdir}/${_srcname}/drivers/net/wireless/ath/"
 
   local src
   for src in "${source[@]}"; do
