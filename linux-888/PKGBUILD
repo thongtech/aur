@@ -1,6 +1,6 @@
 pkgbase="linux-888"
 _major=6.14
-_minor=6
+_minor=8
 pkgver=${_major}.${_minor}
 _stable=${_major}.${_minor}
 _srcname=linux-${_stable}
@@ -34,10 +34,7 @@ source=(
     "${_cfgsource}/linux-cachyos-bore/auto-cpu-optimization.sh"
     "${_patchsource}/all/0001-cachyos-base-all.patch"
     "${_patchsource}/sched/0001-bore-cachy.patch"
-    "${_patchsource}/misc/dkms-clang.patch"
-    "wifi-mac80211-restructure-tx-profile-retrieval.patch"
-    "wifi-nl80211-add-link-id-of-transmitted-profile.patch"
-    "Fix-undeclared-identifier.patch")
+    "${_patchsource}/misc/dkms-clang.patch")
 
 BUILD_FLAGS=(
     CC=clang
@@ -54,24 +51,11 @@ prepare() {
   # modprobed.db path
   MODPROBED_DB="$HOME/.config/modprobed.db"
 
-  git clone --depth 1 --branch ath-next https://git.kernel.org/pub/scm/linux/kernel/git/ath/ath.git
   cd "$_srcname"
 
   echo "Setting version..."
   echo "-$pkgrel" > localversion.10-pkgrel
   echo "${pkgbase#linux}" > localversion.20-pkgname
-
-  echo "Applying ath driver from ath-next..."
-  rm -rf "${srcdir}/${_srcname}/Documentation/devicetree/bindings/net/wireless"
-  
-  # Preserve carl9170
-  mv "${srcdir}/${_srcname}/drivers/net/wireless/ath/carl9170" "${srcdir}/carl9170_backup"
-  rm -rf "${srcdir}/${_srcname}/drivers/net/wireless/ath"
-  mkdir -p "${srcdir}/${_srcname}/drivers/net/wireless/ath"
-  mv "${srcdir}/carl9170_backup" "${srcdir}/${_srcname}/drivers/net/wireless/ath/carl9170"
-  
-  cp -r "${srcdir}/ath/Documentation/devicetree/bindings/net/wireless" "${srcdir}/${_srcname}/Documentation/devicetree/bindings/net/"
-  rsync -av --exclude='carl9170' "${srcdir}/ath/drivers/net/wireless/ath/" "${srcdir}/${_srcname}/drivers/net/wireless/ath/"
 
   local src
   for src in "${source[@]}"; do
@@ -588,9 +572,6 @@ for _p in "${pkgname[@]}"; do
 done
 
 b2sums=('SKIP'
-        'SKIP'
-        'SKIP'
-        'SKIP'
         'SKIP'
         'SKIP'
         'SKIP'
