@@ -1,8 +1,9 @@
 pkgbase="linux-888"
-_major=6.14
-_minor=8
+_major=6.15
+_minor=0
 pkgver=${_major}.${_minor}
-_stable=${_major}.${_minor}
+# _stable=${_major}.${_minor}
+_stable=${_major}
 _srcname=linux-${_stable}
 pkgdesc='An optimised kernel based on linux-cachyos-bore-lto'
 pkgrel=1
@@ -18,6 +19,9 @@ makedepends=(
   pahole
   perl
   python
+  rust
+  rust-bindgen
+  rust-src
   tar
   xz
   zstd
@@ -31,7 +35,6 @@ _patchsource="https://raw.githubusercontent.com/cachyos/kernel-patches/master/${
 source=(
     "https://cdn.kernel.org/pub/linux/kernel/v${pkgver%%.*}.x/${_srcname}.tar.xz"
     "${_cfgsource}/linux-cachyos-bore/config"
-    "${_cfgsource}/linux-cachyos-bore/auto-cpu-optimization.sh"
     "${_patchsource}/all/0001-cachyos-base-all.patch"
     "${_patchsource}/sched/0001-bore-cachy.patch"
     "${_patchsource}/misc/dkms-clang.patch")
@@ -227,9 +230,10 @@ prepare() {
   copy_config_pattern "CRYPTO.*"
   copy_config_pattern "SND_(HDA|SOC).*"
 
-  # Native CPU optimisation
-  chmod +x "${srcdir}"/auto-cpu-optimization.sh
-  "${srcdir}"/auto-cpu-optimization.sh
+  # Native CPU optimisation (Non-Zen4+)
+  # scripts/config -d GENERIC_CPU -d MZEN4 -e X86_NATIVE_CPU
+  # Zen4+
+  scripts/config -d GENERIC_CPU -e MZEN4 -d X86_NATIVE_CPU
 
   # CachyOS configs
   config_option e CACHY
@@ -572,7 +576,6 @@ for _p in "${pkgname[@]}"; do
 done
 
 b2sums=('SKIP'
-        'SKIP'
         'SKIP'
         'SKIP'
         'SKIP'
