@@ -1,13 +1,13 @@
 pkgname=cursor-bin-n
 _pkgname=cursor
-pkgver=0.50.6
+pkgver=1.0.0
 pkgrel=1
 pkgdesc="Cursor App - AI-first coding environment"
 arch=('x86_64')
 url="https://www.cursor.com/"
 license=('custom:Proprietary')
 
-source=("${_pkgname}-${pkgver}-x86_64.AppImage::https://downloads.cursor.com/production/f3f2ad556456ff2df80332923bb1e2a818110d1b/linux/x64/Cursor-0.50.6-x86_64.AppImage"
+source=("${_pkgname}-${pkgver}-x86_64.AppImage::https://downloads.cursor.com/production/53b99ce608cba35127ae3a050c1738a959750865/linux/x64/Cursor-1.0.0-x86_64.AppImage"
         "${_pkgname}.sh")
 sha512sums=('SKIP'
             'ff0837ca96b4b11d17484f4c70ab41bb7caebb7e9e7b0e14ed844284126695961eac2b1303c4d81d63c33fccef2777b0790810f9bc99aebf1a62e8701a9d99a1')
