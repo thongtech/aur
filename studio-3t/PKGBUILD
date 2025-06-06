@@ -1,6 +1,6 @@
-pkgname=studio-3t-n
-_pkgname=studio-3t
-pkgver=2025.10.1
+pkgname=studio-3t-ce-n
+_pkgname=studio-3t-community-edition
+pkgver=2025.1.0
 pkgrel=1
 pkgdesc="The Professional Client, IDE and GUI for MongoDB"
 arch=('x86_64')
@@ -9,10 +9,10 @@ license=("custom")
 
 _source_file="${_pkgname}-linux-x64"
 _source_filename="${_source_file}.tar.gz"
-source=("https://download.studio3t.com/studio-3t/linux/${pkgver}/${_source_filename}"
+source=("https://download-ce.studio3t.com/studio-3t/linux/${pkgver}/${_source_filename}"
         "remove-shortcuts.sh")
 sha256sums=('SKIP'
-            'f40b546f3e3b8fb4c4e200f1b5b88fa3b44c06bd43348af46053b6e6bfd951cd')
+            'e541d1c6118daac680e0b868232b0038be7d73b61bee02016836ec1d793ac22a')
 
 prepare() {
   # Extract
@@ -30,19 +30,19 @@ package() {
   # Copy package files
   echo "Copying package files..."
   mkdir -p "${pkgdir}/opt/${_pkgname}"
-  install -Dm644 "${srcdir}/${_pkgname}/.install4j/Studio-3T.png" "${pkgdir}/usr/share/pixmaps/${_pkgname}.png"
+  install -Dm644 "${srcdir}/${_pkgname}/.install4j/Studio 3T Community Edition.png" "${pkgdir}/usr/share/pixmaps/${_pkgname}.png"
   cp -R ${_pkgname}/. ${pkgdir}/opt/${_pkgname}
 
   # Add package to /usr/bin/
   mkdir -p "${pkgdir}/usr/bin"
-  ln -s "/opt/${_pkgname}/Studio-3T" "${pkgdir}/usr/bin/${_pkgname}"
+  ln -s "/opt/${_pkgname}/Studio 3T Community Edition" "${pkgdir}/usr/bin/${_pkgname}"
 
   # Copy .desktop file
   mkdir -p "${pkgdir}/usr/share/applications"
   cat << EOF > "${pkgdir}/usr/share/applications/${_pkgname}.desktop"
 [Desktop Entry]
 Type=Application
-Name=Studio 3T
+Name=Studio 3T Community Edition
 Comment=${pkgdesc}
 Exec=${_pkgname}
 Icon=${_pkgname}
