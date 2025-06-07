@@ -14,7 +14,7 @@ My collection of improved PKGBUILDs for Arch Linux applications and kernels.
 - Updated to the latest version
 - Added `electron-flags.conf` support
 
-### Studio 3T (MongoDB Client)
+### Studio 3T Community Edition (MongoDB Client)
 
 - Updated to the latest version
 - Removed useless shortcuts from desktop and app menu
@@ -40,6 +40,8 @@ My collection of improved PKGBUILDs for Arch Linux applications and kernels.
 - **It's still SECURE**
   - Essential security modules **retained**
   - **User namespace support** for containerisation
+- **Full support for Qualcomm FastConnect 7800** Wi-Fi 7 cards (WCN785x chipset), including:
+  - **Latest `ath` drivers** from the [ath-next Git branch](https://web.git.kernel.org/pub/scm/linux/kernel/git/ath/ath.git/log/?h=ath-next)
 - **Important: `PKGBUILD` requires customisation** to match your specific hardware and usage patterns as it is based on my system
 
 ## Pre-Installation
