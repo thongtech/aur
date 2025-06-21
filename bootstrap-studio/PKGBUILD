@@ -1,6 +1,6 @@
 pkgname=bootstrap-studio-n
 _pkgname=bstudio
-pkgver=7.1.0
+pkgver=7.1.1
 pkgrel=1
 pkgdesc="Bootstrap Studio is a powerful tool which web developers and designers use to create layouts and fully functional websites using the Bootstrap framework."
 arch=("x86_64")
